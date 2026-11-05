@@ -455,3 +455,5 @@ SW-003 자격증명 노출 대응과 SW-001·SW-002 오체결 방지를 우선�
 #### SW-015~021 운영 반영 — 2026-11-05
 
 사용자 요청으로 DB migrations 002~005, MCP `4ef45b3`, 두 n8n 워크플로우 및 Grafana 패널을 운영에 반영했다. 첫 시세 예약 `75884`·뉴스 예약 `75885` success, MCP 포트폴리오 읽기 성공, Grafana Git Sync `4cc06ec` success. 배포 직후 모의 익절 6건·손절 9건이 실행됐다. 뉴스 처리 13 done / 1 retry로 후속 확인이 필요하다. Grafana Git Sync는 현재 `EvoDmiK/dev-swallow`를 추적하므로 PR #10 머지 후 main 복귀가 필요하다. [[Work/Birds-Nest/작업기록/Swallow/2026-11-05-Swallow-SW015-021-운영-배포|배포 기록]]
+
+- **운영 후속 확인 10:15:** 뉴스 실행 `75933` success. 최초 retry 1건이 재시도 후 done·Discord sent·시세 결측 매수 차단으로 완료되었고 이력 23건 모두 done. Claude Code는 15건 모의 청산의 시세·주문 키와 기준 일치를 독립 검증했다. Antigravity는 Grafana 패널·SQL과 Git Sync를 독립 확인했다. 종목명 별칭 불일치, Git Sync의 main 복귀, Jenkins 전용 잡 구성은 후속 과제다.
