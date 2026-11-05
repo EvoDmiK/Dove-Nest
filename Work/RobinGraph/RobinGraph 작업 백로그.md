@@ -14,7 +14,7 @@ tags: [robingraph, backlog]
 
 | ID | 작업 | 상태 | 담당 | 상세 링크 |
 |---|---|---|---|---|
-| **RG-507** | n8n 새소리 수집·검토·허용 음원 저장 | 진행 중 (TEST 검증 완료 · 실자료 검토·공개 대기 · 운영 미승인) | Claude, Antigravity, Codex, Writer | [[Work/RobinGraph/백로그 상세/RG-507\|후보 1개 검토 대기·검증 근거]] |
+| **RG-507** | n8n 새소리 수집·검토·허용 음원 저장 | 진행 중 (운영 매일 03시·1종 수집 활성 · 실자료 검토·공개 대기) | Claude, Antigravity, Codex, Writer | [[Work/RobinGraph/백로그 상세/RG-507\|운영 수집·검토 대기 근거]] |
 | **RG-409** | 출처 기반 도감 새소리 듣기 | 진행 중 (12종 TEST 완료 · 2종 가용성 후속 · 운영 승인 대기) | Codex, Claude, Antigravity, Writer | [[Work/RobinGraph/백로그 상세/RG-409\|범위·완료 기준]] |
 | **RG-213** | 조건 유지 후속 질문 1단계 | 1단계 TEST 검증 완료 (운영 미반영) | Codex, Claude, Antigravity, Writer | 단일 조건 추가, 무상태 서명 토큰(1h), v2 plan/retained 분리, TEST 배포(69b19f6f), 실API 29HTTP요청/30판정(29pass 1no_data), MLflow 29건 토큰마스킹, Chromium 390/1280 4단계 통과. [[Work/RobinGraph/작업기록/2xx 검색·RAG·그래프 질의/2026-10-28-조건-유지-후속-질문-1단계|상세 작업 기록]] · [[Work/RobinGraph/작업기록/2xx 검색·RAG·그래프 질의/2026-10-28-그래프-질의-안내-UI-정리|후속 UI 정리]] |
 | **RG-603** | 답변별 사용자 피드백·MLflow trace 연결 | 진행 중 (TEST 검증 완료·운영 승인 대기) | Codex, UI, 독립 검증, Writer | 세 rating·키보드 첫 제출 4/4, 실험 33 assessment 각 1개 재조회. [[Work/RobinGraph/백로그 상세/RG-603\|완료 기준]] · [[Work/RobinGraph/작업기록/6xx 관측·평가/2026-10-27-RG603-답변피드백-MLflow-trace-연결\|실제 검증·한계]] |
