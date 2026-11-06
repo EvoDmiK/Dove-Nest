@@ -94,3 +94,108 @@ Auto Ontology의 기능은 다섯 가지 역할로 요약됩니다. 메타데이
 온톨로지와 카탈로그는 별도의 그래프 데이터베이스가 아니라 Postgres에 카탈로그와 나란히 저장됩니다. 질의 흐름은 소스 DB를 연결하고, 수집 서비스가 스키마와 데이터를 추출해 임베딩을 기록하고, 시맨틱 컴파일(Semantic Compilation)로 시맨틱 레이어를 만든 뒤, 질문을 받아 SQL을 생성하고 실행하는 순서입니다. 백엔드는 [LangGraph](https://github.com/langchain-ai/langgraph) 기반의 Text-to-SQL 그래프로 구성되어 있습니다. 저장소의 [`.env.example`](https://github.com/NVIDIA/auto-ontology/blob/main/.env.example)에는 질문의 출력 유형을 되묻는 대화형 명확화 흐름, 생성한 SQL의 리터럴과 JSONB 키 경로와 조인 경로를 실행 전에 DB에서 확인하는 프로브, 행마다 고유한 컬럼으로 GROUP BY 하는 무의미한 집계를 거부하는 검사 같은 선택 옵션이 설명과 함께 들어 있습니다. 이 검사들은 기본적으로 꺼져 있고, 켜면 쿼리 비용이 조금 늘어나는 대신 실행은 되지만 틀린 SQL을 더 잡아냅니다.
 
 모델은 역할별로 세 변수 묶음(엔드포인트, API 키, 모델명)으로 설정합니다. `DEFAULT_MODELS` 묶음이 공통 기본값이고, 메인 채팅과 NL-to-SQL용 `REASONING`, 엔티티 추출용 경량 모델 `NON_REASONING`, 임베딩용 `EMBED`, 재순위화용 `RERANK` 묶음에서 비워 둔 항목은 기본값으로 대체됩니다. 기본 모델은 LLM이 `nvidia/nemotron-3-nano-30b-a3b`, 임베딩이 [`nvidia/nemotron-3-embed-1b`](https://discuss.pytorch.kr/t/nvidia-rteb-1-nemotron-3-embed-feat-rag/11308), 재순위화가 `nvidia/llama-nemotron-rerank-vl-1b-v2`입니다. 임베딩 모델은 수집 시점과 질의 시점에 같아야 하며, 바꾸면 다시 수집해야 합니다. `KUMO_RFM_API_KEY`를 설정하면 KumoRFM 예측 질의 분기가 켜져 예측형 질문을 처리하지만, 이때는 제한된 규모의 데이터가 호스팅된 KumoRFM 서비스로 업로드됩니다.
+## Auto Ontology의 MCP 서버와 에이전트 스킬
+
+저장소의 [`mcp/`](https://github.com/NVIDIA/auto-ontology/tree/main/mcp) 디렉토리에 있는 MCP 서버는 Auto Ontology 공개 API의 HTTP 클라이언트입니다. DB 자격 증명도 모델 설정도 갖지 않고, 인증과 권한 검사를 Next.js 계층에 그대로 맡기므로 배포에 접근할 수 있는 어디서든 실행할 수 있습니다. 클라이언트 설정에는 URL만 적고, 사용자는 Auto Ontology의 로그인 화면(SSO 포함)으로 로그인합니다. Auto Ontology 자체가 OAuth 인가 서버 역할을 하므로 클라이언트 ID나 시크릿을 등록할 필요가 없고, 토큰은 매 호출마다 계정 권한으로 확인되어 역할 변경이나 계정 정지가 즉시 반영됩니다. 서버 자체에 토큰을 설정하는 방법은 일부러 두지 않았는데, 그러면 모든 호출자가 토큰 소유자로 행동하게 되기 때문입니다. 제공하는 도구는 다음과 같습니다:
+
+| 도구 | 용도 |
+|---|---|
+| `ask_question` | 자연어 질문을 던지고 답변, 실행한 SQL, 결과 행(최대 100행)을 받는 주 도구 |
+| `check_answerable` | 시맨틱 레이어가 질문을 다룰 수 있는지 미리 확인하는 저비용 사전 점검 |
+| `check_readiness` | 컴파일된 시맨틱 레이어와 살아 있는 DB 연결이 모두 있는지 확인 |
+| `search_terms` | 비즈니스 용어집 검색 |
+| `get_term` | 용어 하나의 설명, 동의어, 관련 용어 |
+| `get_term_columns` | 용어가 매핑된 물리 컬럼 |
+| `get_term_sql_attributes` | 용어 아래 정의된 SQL 속성 |
+| `get_sql_attribute` | SQL 속성 하나의 식과 목적 |
+| `describe_table` | 테이블의 컬럼, 관련 용어, SQL 속성 |
+
+데이터베이스, 스키마, 원시 컬럼을 훑는 도구는 일부러 넣지 않았습니다. 카탈로그 브라우저가 있으면 에이전트가 시맨틱 레이어 대신 원시 테이블로 추론하려 들기 때문이라고 프로젝트는 설명합니다. 이 가운데 일곱 개는 [`mcp/auto_ontology_mcp/tools.py`](https://github.com/NVIDIA/auto-ontology/blob/main/mcp/auto_ontology_mcp/tools.py)의 허용 목록으로 OpenAPI 명세의 119개 연산에서 고른 것이고, 응답을 스트리밍하는 `ask_question`과 엔드포인트 세 개를 하나의 판정으로 묶는 `check_readiness`는 따로 구현되어 있습니다. 서버는 핸드셰이크 때 도구 호출 순서(`check_readiness` → `search_terms` → `check_answerable` → `ask_question`)를 안내문으로 함께 보내는데, 이를 두지 않으면 모델이 곧장 `ask_question`으로 가는 경향이 있기 때문입니다. `ask_question`은 웹 UI와 같은 Text-to-SQL 에이전트를 끝까지 실행하므로 보통 수십 초가 걸립니다.
+
+저장소 루트의 [`skills/`](https://github.com/NVIDIA/auto-ontology/tree/main/skills)에는 코딩 에이전트용 스킬 세 개가 들어 있습니다. `nvidia-ontology-setup`은 Helm과 Docker Compose 설치와 문제 해결, `nvidia-ontology-management`는 용어와 SQL 속성과 관계를 수정하고 게시하는 쓰기 경로, `nvidia-ontology-query`는 MCP 우선과 REST 대체 경로로 질의하고 SQL과 결과 행을 검증하는 절차를 다룹니다. MCP는 읽기 전용이므로 쓰기는 모두 Next.js의 `/api/...` 경로로 갑니다. 이 스킬들은 [NVIDIA의 스킬 카탈로그](https://github.com/nvidia/skills)에도 동기화되어 `npx skills add nvidia/skills`로 설치할 수 있습니다.
+
+## Auto Ontology 설치와 사용
+
+로컬 실행에는 Docker Compose v2, NVIDIA API 카탈로그에서 받은 `nvapi-` 키, 질의할 소스 DB(Databricks, Postgres, Snowflake, DuckDB)의 연결 정보가 필요합니다. 저장소를 받은 뒤 `.env.example`을 복사해 Postgres 자격 증명, `DEFAULT_MODELS_API_KEY`, `CONNECTION_STRINGS` 등을 채우고 스택을 띄웁니다. `AUTH_SECRET`과 `APP_URL`은 필수이며, 비어 있으면 모든 페이지가 Better Auth 오류로 실패합니다. 저장소 이름은 프로젝트 이름과 달리 `auto-ontology`이므로 아래 명령에서는 그 이름을 그대로 씁니다:
+
+```bash
+git clone https://github.com/NVIDIA/auto-ontology.git auto_ontology && cd auto_ontology
+cp .env.example .env
+# .env 편집: AUTH_SECRET, APP_URL, DEFAULT_MODELS_API_KEY, CONNECTION_STRINGS 등
+docker compose up -d --build
+```
+
+백엔드와 프런트엔드 이미지를 빌드하고 Postgres와 pgAdmin을 띄운 뒤 스키마 동기화 작업을 거쳐 앱이 시작되며, UI는 `http://localhost:3000`, 백엔드 API는 3001번, pgAdmin은 5050번 포트에서 열립니다. 셀프 가입은 비활성화되어 있어 `.env`의 관리자 이메일과 비밀번호로 첫 관리자를 만듭니다. 소스 DB 연결은 UI에서 추가하는 것이 기본이고, `CONNECTION_STRINGS` 환경 변수는 UI에서 추가한 연결이 하나도 없을 때만 쓰입니다. UI에서 추가한 연결의 자격 증명은 Vault를 설정하지 않으면 Postgres에 평문으로 저장되므로, 운영 환경에서는 `VAULT_ADDR` 등 네 개의 Vault 변수를 설정해야 합니다.
+
+스크립트나 노트북에서는 사용자 메뉴의 API Tokens에서 발급한 토큰을 `x-api-key` 헤더로 보냅니다. 토큰은 소유자의 권한을 그대로 따르며, 서버에는 SHA-256 해시만 저장되어 발급 시 한 번만 보여 줍니다. 아래는 README의 파이썬 예제입니다:
+
+```python
+import os
+import requests
+
+session = requests.Session()
+session.headers["x-api-key"] = os.environ["AUTO_ONTOLOGY_API_TOKEN"]
+
+terms = session.get("https://auto_ontology.example.com/api/terms").json()
+
+answer = session.post(
+    "https://auto_ontology.example.com/api/chat/completions",
+    json={"question": "How many orders shipped last week?"},
+).json()
+```
+
+`POST /api/chat/completions`의 응답은 `step`, `result`, `error` 이벤트가 이어진 뒤 `[DONE]`으로 끝나는 SSE 스트림입니다. `conversation_id`에 클라이언트가 만든 UUID를 넣으면 대화가 이어지고, 이때 백엔드는 최근 완료된 다섯 턴(최대 12,000자)을 불러 "지난달은?" 같은 후속 질문을 독립 질문으로 다시 쓴 뒤 Text-to-SQL 그래프를 실행합니다. 같은 대화에 요청이 겹치면 `409 Conversation in progress`가 돌아옵니다. FastAPI 포트는 사용자 식별 헤더를 따로 검증하지 않는 내부 경계이므로 외부에 노출하면 안 됩니다. 외부 클라이언트는 항상 Next.js 게이트웨이를 통해야 합니다.
+
+MCP 서버는 `uvx`로 저장소에서 바로 받아 실행합니다. PyPI에는 아직 등록되어 있지 않아 `uvx auto-ontology-mcp`만으로는 설치되지 않습니다:
+
+```bash
+AUTO_ONTOLOGY_API_URL=http://localhost:3000 \
+  uvx --from "git+https://github.com/NVIDIA/auto-ontology.git#subdirectory=mcp" auto-ontology-mcp
+```
+
+Cursor나 Claude Desktop의 MCP 설정에는 자격 증명 없이 서버 주소만 적고, 끝에 `/mcp`를 붙입니다. 저장소 문서에는 아직 "NVIDIA 내부용이라 GitHub 자격 증명이 필요하다"는 문구가 남아 있지만, 저장소는 현재 공개 상태입니다:
+
+```json
+{
+  "mcpServers": {
+    "auto-ontology": {
+      "url": "https://auto-ontology-mcp.example/mcp"
+    }
+  }
+}
+```
+
+Kubernetes에는 NGC 카탈로그에 공개된 Helm 차트로 배포합니다. 백엔드와 수집 이미지(`nvcr.io/nvidia/auto-ontology`), 프런트엔드 이미지, MCP 서버 이미지가 함께 공개되어 있고, 차트는 자기 버전과 같은 태그의 이미지를 고정합니다. 관리자 계정과 Postgres 비밀번호, 모델 API 키는 값 파일에 적어 설치하며, 자세한 절차는 저장소의 [`DEPLOYMENT.md`](https://github.com/NVIDIA/auto-ontology/blob/main/DEPLOYMENT.md)에 있습니다:
+
+```bash
+helm repo add nvidia https://helm.ngc.nvidia.com/nvidia
+helm repo update
+helm install auto-ontology nvidia/auto-ontology -f auto-ontology-secrets.yaml
+kubectl port-forward svc/frontend 3000:3000
+```
+
+## Auto Ontology의 라이선스
+
+Auto Ontology는 [Apache-2.0](https://github.com/NVIDIA/auto-ontology/blob/main/LICENSE)으로 공개되어 있어 개인 및 상업적 목적으로 자유롭게 사용할 수 있습니다. 함께 쓰는 서드파티 구성 요소는 [`THIRD_PARTY_NOTICES.md`](https://github.com/NVIDIA/auto-ontology/blob/main/THIRD_PARTY_NOTICES.md)에 정리되어 있습니다.
+
+단, 소프트웨어가 실행 중에 호출하는 외부 자원은 라이선스와 별개로 각자의 약관을 따릅니다. 기본 설정의 NVIDIA 호스팅 모델 API는 NVIDIA API 카탈로그와 각 모델의 약관을 따르고, 직접 연결한 OpenAI 호환 엔드포인트와 KumoRFM 서비스는 해당 제공자의 약관을, 소스 데이터베이스는 자기 계약을 따릅니다. 그래서 운영 데이터를 연결하기 전에 어떤 데이터가 어느 서비스로 나가는지 확인해야 합니다.
+
+## 관련 링크
+
+- [NVIDIA Agent Knowledge Foundation 개발자 페이지](https://developer.nvidia.com/topic/ai/agent-knowledge-foundation/)
+- [Auto Ontology GitHub 저장소](https://github.com/NVIDIA/auto-ontology)
+- [Ontology SQL Eval GitHub 저장소](https://github.com/NVIDIA/ontology-sql-eval)
+
+## 더 읽어보기
+
+- https://discuss.pytorch.kr/t/feyn-db-text-to-sql-sqrl-feat-chonkie/11360
+- https://discuss.pytorch.kr/t/premsql-text-to-sql/5272
+- https://discuss.pytorch.kr/t/ontology-playground-feat-microsoft/11450
+- https://discuss.pytorch.kr/t/nvidia-rteb-1-nemotron-3-embed-feat-rag/11308
+- https://discuss.pytorch.kr/t/enrichmcp-mcp-orm-for-ai-agents/7140
+
+
+## 관련
+
+- [[Learning/원문/index|원문 인덱스]]
+- [[Learning/index|Learning 전체 목록]]
