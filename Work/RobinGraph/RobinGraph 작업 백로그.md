@@ -14,7 +14,7 @@ tags: [robingraph, backlog]
 
 | ID | 작업 | 상태 | 담당 | 상세 링크 |
 |---|---|---|---|---|
-| **RG-215** | 조건으로 새 찾기(새 탐색기) | 진행 중 (최종 배포 cdfed 브라우저 재검증 대기) | Codex, Claude, Antigravity, Writer | 다중 조건(분포·목과속 분류군·서식지·먹이) 구조화 검색(GET /v1/taxa/explore), 다중 먹이 AND+합산비율 DESC 정렬, 종/아종 422 거부, root백엔드167/프런트361통과, 실제TEST HTTP23통과, 74c37 브라우저통과, cdfed 브라우저 재검증 대기. [[Work/RobinGraph/백로그 상세/RG-215\|상세 백로그]] · [[Work/RobinGraph/작업기록/2xx 검색·RAG·그래프 질의/2026-11-10-새-탐색기-조건-검색\|상세 작업기록]] |
+| **RG-215** | 조건으로 새 찾기(새 탐색기) | TEST 완료 (운영 미반영) | Codex, Claude, Antigravity, Writer | 다중 조건(분포·목과속 분류군·서식지·먹이) 구조화 검색(GET /v1/taxa/explore), 다중 먹이 AND+합산비율 DESC 정렬, 종/아종 422 거부, root백엔드167/프런트361통과, 실제TEST HTTP23/실브라우저1280·390·320통과(cdfed28a). [[Work/RobinGraph/백로그 상세/RG-215\|상세 백로그]] · [[Work/RobinGraph/작업기록/2xx 검색·RAG·그래프 질의/2026-11-10-새-탐색기-조건-검색\|상세 작업기록]] |
 | **RG-507** | n8n 새소리 수집·검토·허용 음원 저장 | 진행 중 (검토 기록 저장 TEST 완료 · 운영 적용·사람 검토 대기) | Claude, Antigravity, Codex, Writer | [[Work/RobinGraph/백로그 상세/RG-507\|검토 기록 저장·검증]] |
 | **RG-409** | 출처 기반 도감 새소리 듣기 | 진행 중 (12종 TEST 완료 · 2종 가용성 후속 · 운영 승인 대기) | Codex, Claude, Antigravity, Writer | [[Work/RobinGraph/백로그 상세/RG-409\|범위·완료 기준]] |
 | **RG-213** | 조건 유지 후속 질문 1단계 | 1단계 TEST 검증 완료 (운영 미반영) | Codex, Claude, Antigravity, Writer | 단일 조건 추가, 무상태 서명 토큰(1h), v2 plan/retained 분리, TEST 배포(69b19f6f), 실API 29HTTP요청/30판정(29pass 1no_data), MLflow 29건 토큰마스킹, Chromium 390/1280 4단계 통과. [[Work/RobinGraph/작업기록/2xx 검색·RAG·그래프 질의/2026-10-28-조건-유지-후속-질문-1단계|상세 작업 기록]] · [[Work/RobinGraph/작업기록/2xx 검색·RAG·그래프 질의/2026-10-28-그래프-질의-안내-UI-정리|후속 UI 정리]] |
