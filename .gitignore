@@ -11,3 +11,7 @@ resume/
 .obsidian/plugins/semantic-vault-mcp/data.json
 .obsidian/plugins/remotely-save/data.json
 .obsidian/plugins/github-sync/data.json
+
+# Graphify output (local knowledge graph, regenerate with `graphify update .`)
+graphify-out/
+
